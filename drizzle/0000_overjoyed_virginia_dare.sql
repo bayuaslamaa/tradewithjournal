@@ -1,0 +1,20 @@
+CREATE TABLE "trades" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"trade_number" serial NOT NULL,
+	"date" date NOT NULL,
+	"pair" text NOT NULL,
+	"direction" text,
+	"reason" text,
+	"emotion_before" text,
+	"emotion_after" text,
+	"result" text DEFAULT 'PENDING',
+	"pnl_pct" numeric(8, 2),
+	"grade" smallint,
+	"lesson" text,
+	"chart_url" text,
+	"ai_outlook" text,
+	"tags" text[],
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now(),
+	"updated_at" timestamp with time zone DEFAULT now()
+);

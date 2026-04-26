@@ -1,0 +1,142 @@
+/* app/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Premium Dark Theme Tokens ──────────────────────────── */
+:root {
+  --bg:        #050608;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #101623 0%, #050608 100%);
+  --surface:   rgba(15, 18, 24, 0.65);
+  --surface-solid: #0f1218;
+  --surface2:  rgba(25, 30, 40, 0.5);
+  --surface-hover: rgba(30, 36, 48, 0.7);
+  
+  --border:    rgba(255, 255, 255, 0.06);
+  --border2:   rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  
+  --text:      #f4f6f8;
+  --muted:     #8a94a6;
+  
+  --accent:    #00ffb2;
+  --accent-glow: rgba(0, 255, 178, 0.2);
+  --accent2:   #3b82f6;
+  
+  --win:       #00e6a0;
+  --loss:      #ff4d6d;
+  --pending:   #ffb400;
+  --be:        #94a3b8;
+}
+
+/* ─── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; padding: 0; margin: 0; }
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .display-font {
+  font-family: 'Syne', sans-serif;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ─── Typography & Utilities ─────────────────────────────── */
+.mono { font-family: 'Space Mono', monospace; }
+
+.glass-panel {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+}
+
+.glass-input {
+  background: rgba(15, 18, 24, 0.4);
+  border: 1px solid var(--border2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+.glass-input:focus {
+  border-color: var(--accent);
+  background: rgba(15, 18, 24, 0.7);
+  box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+/* ─── Grade dots ─────────────────────────────────────────── */
+.grade-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+.grade-dot.active { 
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  transform: scale(1.1);
+}
+
+/* ─── Animations ─────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.slide-in { animation: slideIn 0.3s ease-out both; }
+
+/* ─── Tag pill ───────────────────────────────────────────── */
+.tag-pill {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.tag-pill:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+/* ─── Result badges ──────────────────────────────────────── */
+.badge-win       { background: rgba(0,230,160,0.1);  color: var(--win);     border: 1px solid rgba(0,230,160,0.2); }
+.badge-loss      { background: rgba(255,77,109,0.1);  color: var(--loss);    border: 1px solid rgba(255,77,109,0.2); }
+.badge-pending   { background: rgba(255,180,0,0.1);  color: var(--pending); border: 1px solid rgba(255,180,0,0.2); }
+.badge-breakeven { background: rgba(148,163,184,0.1);color: var(--be);      border: 1px solid rgba(148,163,184,0.2); }
+
+/* ─── Mobile: prevent iOS input zoom ─────────────────────── */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
