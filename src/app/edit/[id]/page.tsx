@@ -12,15 +12,44 @@ const TAGS_PRESET = [
   'pin bar', 'engulfing', 'FOMO', 'revenge', 'trend', 'scalp', 'swing',
 ]
 
+// ─── P&L / R:R calculators (same as add page) ────────────────
+function calcPnl(
+  entry: string | null | undefined,
+  exec: string | null | undefined,
+  direction: string | null | undefined,
+): string | null {
+  const e = parseFloat(entry ?? '')
+  const x = parseFloat(exec ?? '')
+  if (!e || !x || isNaN(e) || isNaN(x)) return null
+  const raw = ((x - e) / e) * 100
+  const pnl = direction === 'SHORT' ? -raw : raw
+  return pnl.toFixed(2)
+}
+
+function calcPlannedRR(
+  entry: string | null | undefined,
+  sl: string | null | undefined,
+  tp: string | null | undefined,
+): { riskPct: string; rewardPct: string; rr: string } | null {
+  const e = parseFloat(entry ?? '')
+  const s = parseFloat(sl ?? '')
+  const t = parseFloat(tp ?? '')
+  if (!e || !s || !t || isNaN(e) || isNaN(s) || isNaN(t)) return null
+  const risk   = Math.abs(((e - s) / e) * 100)
+  const reward = Math.abs(((t - e) / e) * 100)
+  const rr     = risk > 0 ? reward / risk : 0
+  return { riskPct: risk.toFixed(2), rewardPct: reward.toFixed(2), rr: rr.toFixed(2) }
+}
+
 export default function EditTradePage({ params }: { params: { id: string } }) {
   const router  = useRouter()
   const { id }  = params
 
-  const [form, setForm]         = useState<FormData | null>(null)
+  const [form, setForm]             = useState<FormData | null>(null)
   const [customPair, setCustomPair] = useState('')
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(false)
+  const [error, setError]           = useState<string | null>(null)
 
   // ── Fetch existing trade ──
   useEffect(() => {
@@ -28,7 +57,6 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
       .then(async r => {
         if (!r.ok) throw new Error(`Trade not found (${r.status})`)
         const t: Trade = await r.json()
-        // if pair isn't a standard preset, mark as OTHER
         const knownPairs = PAIRS.filter(p => p !== 'OTHER')
         if (t.pair && !knownPairs.includes(t.pair)) {
           setCustomPair(t.pair)
@@ -43,6 +71,14 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
 
   const set = (k: keyof FormData, v: unknown) =>
     setForm(prev => prev ? ({ ...prev, [k]: v }) : prev)
+
+  // Auto-compute pnlPct whenever price fields or direction change
+  useEffect(() => {
+    if (!form) return
+    const auto = calcPnl(form.entryPricePlan, form.executedPrice, form.direction)
+    if (auto !== null) set('pnlPct', auto)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form?.entryPricePlan, form?.executedPrice, form?.direction])
 
   const toggleTag = (tag: string) => {
     const tags = form?.tags ?? []
@@ -77,7 +113,7 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
     }
   }
 
-  // ── Loading state ──
+  // ── Loading / error states ──
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -97,6 +133,9 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
   }
 
   if (!form) return null
+
+  const rr      = calcPlannedRR(form.entryPricePlan, form.slPlan, form.tpPlan)
+  const autoPnl = calcPnl(form.entryPricePlan, form.executedPrice, form.direction)
 
   return (
     <div className="max-w-2xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -137,7 +176,7 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
             </Field>
             <Field label="PAIR">
               <select value={form.pair ?? ''} onChange={e => set('pair', e.target.value)}
-                className="glass-input form-input">
+                className="glass-input form-input appearance-none">
                 <option value="">— select pair —</option>
                 {PAIRS.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -199,8 +238,74 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
           </Field>
         </Section>
 
-        {/* ── Section 2: Before trade ── */}
-        <Section label="02 — BEFORE THE TRADE">
+        {/* ── Section 2: Price Plan ── */}
+        <Section label="02 — PRICE PLAN (OPTIONAL)">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="ENTRY PRICE (PLAN)">
+              <PriceInput
+                value={form.entryPricePlan}
+                placeholder="e.g. 65000"
+                onChange={v => set('entryPricePlan', v)}
+              />
+            </Field>
+            <Field label="EXECUTED PRICE">
+              <PriceInput
+                value={form.executedPrice}
+                placeholder="Actual fill price"
+                onChange={v => set('executedPrice', v)}
+                highlight={!!autoPnl}
+              />
+            </Field>
+            <Field label="STOP LOSS (PLAN)">
+              <PriceInput
+                value={form.slPlan}
+                placeholder="SL price"
+                onChange={v => set('slPlan', v)}
+                color="loss"
+              />
+            </Field>
+            <Field label="TAKE PROFIT (PLAN)">
+              <PriceInput
+                value={form.tpPlan}
+                placeholder="TP price"
+                onChange={v => set('tpPlan', v)}
+                color="win"
+              />
+            </Field>
+          </div>
+
+          {/* Live calculator output */}
+          {(rr || autoPnl) && (
+            <div className="rounded-xl p-4 grid gap-3" style={{ background: 'rgba(0,255,178,0.04)', border: '1px solid rgba(0,255,178,0.15)' }}>
+              <p className="mono text-[0.6rem] tracking-widest" style={{ color: 'var(--accent)' }}>⚡ LIVE CALCULATOR</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {rr && (
+                  <>
+                    <CalcStat label="RISK" value={`${rr.riskPct}%`} color="loss" />
+                    <CalcStat label="REWARD" value={`${rr.rewardPct}%`} color="win" />
+                    <CalcStat label="R:R RATIO" value={`1 : ${rr.rr}`} color="accent" />
+                  </>
+                )}
+                {autoPnl && (
+                  <CalcStat
+                    label="AUTO P&L"
+                    value={`${parseFloat(autoPnl) >= 0 ? '+' : ''}${autoPnl}%`}
+                    color={parseFloat(autoPnl) >= 0 ? 'win' : 'loss'}
+                    filled
+                  />
+                )}
+              </div>
+              {autoPnl && (
+                <p className="mono text-[0.6rem] tracking-wide" style={{ color: 'var(--muted)' }}>
+                  ✓ P&L (%) auto-filled from entry plan vs executed price
+                </p>
+              )}
+            </div>
+          )}
+        </Section>
+
+        {/* ── Section 3: Before trade ── */}
+        <Section label="03 — BEFORE THE TRADE">
           <Field label="REASON / SETUP" required>
             <textarea rows={3} placeholder="Why did you take this trade?"
               value={form.reason ?? ''} onChange={e => set('reason', e.target.value)}
@@ -224,24 +329,25 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
           </Field>
         </Section>
 
-        {/* ── Section 3: After trade ── */}
-        <Section label="03 — AFTER THE TRADE">
+        {/* ── Section 4: After trade ── */}
+        <Section label="04 — AFTER THE TRADE">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="RESULT">
               <select value={form.result ?? 'PENDING'} onChange={e => set('result', e.target.value as TradeResult)}
-                className="glass-input form-input">
+                className="glass-input form-input appearance-none">
                 <option value="PENDING">PENDING</option>
                 <option value="WIN">WIN</option>
                 <option value="LOSS">LOSS</option>
                 <option value="BREAKEVEN">BREAKEVEN</option>
               </select>
             </Field>
-            <Field label="P&L (%)">
+            <Field label={autoPnl ? 'P&L (%) — auto-computed ✓' : 'P&L (%)'}>
               <div className="relative">
                 <input type="number" step="0.01" placeholder="0.00"
                   value={form.pnlPct ?? ''}
                   onChange={e => set('pnlPct', e.target.value ? e.target.value : null)}
-                  className="glass-input form-input pr-8 text-right font-mono" />
+                  className="glass-input form-input pr-8 text-right font-mono"
+                  style={autoPnl ? { borderColor: 'rgba(0,255,178,0.4)', color: parseFloat(autoPnl) >= 0 ? 'var(--win)' : 'var(--loss)' } : {}} />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--muted)] font-mono pointer-events-none">%</span>
               </div>
             </Field>
@@ -333,6 +439,8 @@ export default function EditTradePage({ params }: { params: { id: string } }) {
   )
 }
 
+// ─── Shared UI primitives ─────────────────────────────────────
+
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl overflow-hidden glass-panel">
@@ -357,6 +465,50 @@ function Field({ label, required, accent, children }: {
         {label}{required && <span className="text-[var(--loss)]"> *</span>}
       </label>
       {children}
+    </div>
+  )
+}
+
+function PriceInput({ value, placeholder, onChange, highlight, color }: {
+  value: string | null | undefined
+  placeholder?: string
+  onChange: (v: string | null) => void
+  highlight?: boolean
+  color?: 'win' | 'loss'
+}) {
+  const borderColor = highlight
+    ? 'rgba(0,255,178,0.4)'
+    : color === 'win'
+      ? 'rgba(0,230,160,0.3)'
+      : color === 'loss'
+        ? 'rgba(255,77,109,0.3)'
+        : undefined
+  const textColor = color === 'win' ? 'var(--win)' : color === 'loss' ? 'var(--loss)' : undefined
+  return (
+    <input
+      type="number"
+      step="any"
+      placeholder={placeholder ?? '0.00'}
+      value={value ?? ''}
+      onChange={e => onChange(e.target.value ? e.target.value : null)}
+      className="glass-input form-input font-mono"
+      style={{ borderColor, color: textColor }}
+    />
+  )
+}
+
+function CalcStat({ label, value, color, filled }: {
+  label: string; value: string; color: 'win' | 'loss' | 'accent'; filled?: boolean
+}) {
+  const c = color === 'win' ? 'var(--win)' : color === 'loss' ? 'var(--loss)' : 'var(--accent)'
+  return (
+    <div className="rounded-lg p-3 text-center"
+      style={{
+        background: filled ? `${c}18` : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${c}30`,
+      }}>
+      <p className="mono text-[0.55rem] tracking-widest mb-1" style={{ color: 'var(--muted)' }}>{label}</p>
+      <p className="mono font-bold text-sm" style={{ color: c }}>{value}</p>
     </div>
   )
 }

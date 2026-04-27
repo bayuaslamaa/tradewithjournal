@@ -22,6 +22,12 @@ export const trades = pgTable('trades', {
   pair:      text('pair').notNull(),
   direction: text('direction', { enum: ['LONG', 'SHORT'] }),
 
+  // Price planning (all optional — used to auto-compute pnlPct)
+  entryPricePlan: numeric('entry_price_plan', { precision: 20, scale: 8 }),
+  slPlan:         numeric('sl_plan',          { precision: 20, scale: 8 }),
+  tpPlan:         numeric('tp_plan',          { precision: 20, scale: 8 }),
+  executedPrice:  numeric('executed_price',   { precision: 20, scale: 8 }),
+
   // Pre-trade journaling
   reason:        text('reason'),
   emotionBefore: text('emotion_before'),
