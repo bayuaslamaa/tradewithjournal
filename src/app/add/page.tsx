@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Direction, TradeResult } from '@/types/trade'
 import type { Trade } from '@/db/schema'
+import { calcPnl, calcPlannedRR, calcSpotRiskPlan } from '@/lib/risk'
 
 type FormData = Partial<Omit<Trade, 'id' | 'tradeNumber' | 'createdAt' | 'updatedAt'>>
 
@@ -20,6 +21,13 @@ const empty: FormData = {
   slPlan: null,
   tpPlan: null,
   executedPrice: null,
+  portfolioValue: null,
+  riskPercent: '1',
+  maxLossAmount: null,
+  recommendedBuyAmount: null,
+  estimatedQuantity: null,
+  plannedRewardAmount: null,
+  plannedRR: null,
   reason: '',
   emotionBefore: '',
   emotionAfter: '',
@@ -33,44 +41,17 @@ const empty: FormData = {
   notes: '',
 }
 
-// ─── P&L auto-calculator ─────────────────────────────────────
-// Returns pnl% based on executed price vs entry plan, using direction.
-// If executedPrice & entryPricePlan exist: pnl = (exec - entry) / entry × 100 (× -1 for SHORT)
-// Also computes planned R:R from SL/TP vs entry.
-function calcPnl(
-  entry: string | null | undefined,
-  exec: string | null | undefined,
-  direction: string | null | undefined,
-): string | null {
-  const e = parseFloat(entry ?? '')
-  const x = parseFloat(exec ?? '')
-  if (!e || !x || isNaN(e) || isNaN(x)) return null
-  const raw = ((x - e) / e) * 100
-  const pnl = direction === 'SHORT' ? -raw : raw
-  return pnl.toFixed(2)
-}
-
-function calcPlannedRR(
-  entry: string | null | undefined,
-  sl: string | null | undefined,
-  tp: string | null | undefined,
-): { riskPct: string; rewardPct: string; rr: string } | null {
-  const e = parseFloat(entry ?? '')
-  const s = parseFloat(sl ?? '')
-  const t = parseFloat(tp ?? '')
-  if (!e || !s || !t || isNaN(e) || isNaN(s) || isNaN(t)) return null
-  const risk   = Math.abs(((e - s) / e) * 100)
-  const reward = Math.abs(((t - e) / e) * 100)
-  const rr     = risk > 0 ? reward / risk : 0
-  return { riskPct: risk.toFixed(2), rewardPct: reward.toFixed(2), rr: rr.toFixed(2) }
-}
-
 export default function AddTradePage() {
   const router = useRouter()
   const [form, setForm]       = useState<FormData>(empty)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const [customPair, setCustomPair] = useState('')
+
+  useEffect(() => {
+    const savedPortfolio = window.localStorage.getItem('twx:lastPortfolioValue')
+    if (savedPortfolio) setForm(prev => ({ ...prev, portfolioValue: savedPortfolio }))
+  }, [])
 
   const set = (k: keyof FormData, v: unknown) =>
     setForm(prev => ({ ...prev, [k]: v }))
@@ -97,10 +78,28 @@ export default function AddTradePage() {
     setError(null)
     try {
       const pair = form.pair === 'OTHER' ? customPair : form.pair
+      const riskPlan = calcSpotRiskPlan({
+        portfolioValue: form.portfolioValue,
+        riskPercent: form.riskPercent,
+        entryPrice: form.entryPricePlan,
+        stopLoss: form.slPlan,
+        takeProfit: form.tpPlan,
+      })
+      if (form.portfolioValue) {
+        window.localStorage.setItem('twx:lastPortfolioValue', String(form.portfolioValue))
+      }
       const res = await fetch('/api/trades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pair }),
+        body: JSON.stringify({
+          ...form,
+          pair,
+          maxLossAmount: riskPlan?.maxLossAmount ?? null,
+          recommendedBuyAmount: riskPlan?.recommendedBuyAmount ?? null,
+          estimatedQuantity: riskPlan?.estimatedQuantity ?? null,
+          plannedRewardAmount: riskPlan?.plannedRewardAmount ?? null,
+          plannedRR: riskPlan?.plannedRR ?? null,
+        }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -117,6 +116,13 @@ export default function AddTradePage() {
 
   const rr = calcPlannedRR(form.entryPricePlan, form.slPlan, form.tpPlan)
   const autoPnl = calcPnl(form.entryPricePlan, form.executedPrice, form.direction)
+  const riskPlan = calcSpotRiskPlan({
+    portfolioValue: form.portfolioValue,
+    riskPercent: form.riskPercent,
+    entryPrice: form.entryPricePlan,
+    stopLoss: form.slPlan,
+    takeProfit: form.tpPlan,
+  })
 
   return (
     <div className="max-w-2xl mx-auto pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -218,9 +224,24 @@ export default function AddTradePage() {
           </Field>
         </Section>
 
-        {/* ── Section 2: Price Plan ── */}
-        <Section label="02 — PRICE PLAN (OPTIONAL)">
-          <div className="grid grid-cols-2 gap-4">
+        {/* ── Section 2: Risk & Price Plan ── */}
+        <Section label="02 — RISK & PRICE PLAN">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="PORTFOLIO VALUE">
+              <PriceInput
+                value={form.portfolioValue}
+                placeholder="e.g. 1000"
+                onChange={v => set('portfolioValue', v)}
+              />
+            </Field>
+            <Field label="RISK %">
+              <PriceInput
+                value={form.riskPercent}
+                placeholder="1"
+                onChange={v => set('riskPercent', v ?? '1')}
+                highlight
+              />
+            </Field>
             <Field label="ENTRY PRICE (PLAN)">
               <PriceInput
                 value={form.entryPricePlan}
@@ -255,15 +276,27 @@ export default function AddTradePage() {
           </div>
 
           {/* Live calculator output */}
-          {(rr || autoPnl) && (
+          {(riskPlan || rr || autoPnl) && (
             <div className="rounded-xl p-4 grid gap-3" style={{ background: 'rgba(0,255,178,0.04)', border: '1px solid rgba(0,255,178,0.15)' }}>
-              <p className="mono text-[0.6rem] tracking-widest" style={{ color: 'var(--accent)' }}>⚡ LIVE CALCULATOR</p>
+              <p className="mono text-[0.6rem] tracking-widest" style={{ color: 'var(--accent)' }}>LIVE CALCULATOR</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {riskPlan && (
+                  <>
+                    <CalcStat label="MAX LOSS" value={`$${riskPlan.maxLossAmount}`} color="loss" filled />
+                    <CalcStat label="BUY AMOUNT" value={`$${riskPlan.recommendedBuyAmount}`} color="accent" filled />
+                    <CalcStat label="QUANTITY" value={riskPlan.estimatedQuantity} color="accent" />
+                    {riskPlan.plannedRewardAmount && (
+                      <CalcStat label="PLAN REWARD" value={`$${riskPlan.plannedRewardAmount}`} color="win" />
+                    )}
+                    {riskPlan.plannedRR && (
+                      <CalcStat label="PLAN R:R" value={`1 : ${riskPlan.plannedRR}`} color="win" />
+                    )}
+                  </>
+                )}
                 {rr && (
                   <>
-                    <CalcStat label="RISK" value={`${rr.riskPct}%`} color="loss" />
-                    <CalcStat label="REWARD" value={`${rr.rewardPct}%`} color="win" />
-                    <CalcStat label="R:R RATIO" value={`1 : ${rr.rr}`} color="accent" />
+                    <CalcStat label="STOP MOVE" value={`${rr.riskPct}%`} color="loss" />
+                    <CalcStat label="TP MOVE" value={`${rr.rewardPct}%`} color="win" />
                   </>
                 )}
                 {autoPnl && (
@@ -277,10 +310,15 @@ export default function AddTradePage() {
               </div>
               {autoPnl && (
                 <p className="mono text-[0.6rem] tracking-wide" style={{ color: 'var(--muted)' }}>
-                  ✓ P&L (%) auto-filled from entry plan vs executed price
+                  P&L (%) auto-filled from entry plan vs executed price
                 </p>
               )}
             </div>
+          )}
+          {!riskPlan && form.portfolioValue && form.riskPercent && form.entryPricePlan && (
+            <p className="mono text-[0.65rem] leading-relaxed" style={{ color: 'var(--muted)' }}>
+              Add a stop loss below entry to unlock the recommended spot position size.
+            </p>
           )}
         </Section>
 

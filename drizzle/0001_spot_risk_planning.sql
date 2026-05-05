@@ -1,0 +1,11 @@
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "entry_price_plan" numeric(20, 8);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "sl_plan" numeric(20, 8);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "tp_plan" numeric(20, 8);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "executed_price" numeric(20, 8);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "portfolio_value" numeric(14, 2);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "risk_percent" numeric(6, 3);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "max_loss_amount" numeric(14, 2);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "recommended_buy_amount" numeric(14, 2);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "estimated_quantity" numeric(20, 8);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "planned_reward_amount" numeric(14, 2);
+ALTER TABLE "trades" ADD COLUMN IF NOT EXISTS "planned_rr" numeric(8, 2);

@@ -21,6 +21,7 @@ export default function TradeCard({ trade, onDelete }: Props) {
   const cfg    = resultConfig[result as keyof typeof resultConfig] ?? resultConfig.PENDING
 
   const pnlPct   = trade.pnlPct != null ? Number(trade.pnlPct) : null
+  const hasRiskPlan = Boolean(trade.maxLossAmount || trade.recommendedBuyAmount || trade.estimatedQuantity || trade.plannedRR)
   const pnlColor =
     pnlPct == null ? 'var(--muted)'
     : pnlPct > 0   ? 'var(--win)'
@@ -130,6 +131,27 @@ export default function TradeCard({ trade, onDelete }: Props) {
             <Section label="AI OUTLOOK"      text={trade.aiOutlook} accent />
             <Section label="EMOTION BEFORE"  text={trade.emotionBefore} />
             <Section label="EMOTION AFTER"   text={trade.emotionAfter} />
+            {hasRiskPlan && (
+              <div className="sm:col-span-2">
+                <div className="p-4 rounded-xl bg-[var(--accent)]/5 border border-[var(--accent)]/10">
+                  <p
+                    className="mono mb-3"
+                    style={{ fontSize: '0.65rem', letterSpacing: '0.12em', color: 'var(--accent)', fontWeight: 600 }}
+                  >
+                    RISK PLAN
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {trade.portfolioValue && <RiskStat label="PORTFOLIO" value={`$${trade.portfolioValue}`} />}
+                    {trade.riskPercent && <RiskStat label="RISK" value={`${trade.riskPercent}%`} />}
+                    {trade.maxLossAmount && <RiskStat label="MAX LOSS" value={`$${trade.maxLossAmount}`} loss />}
+                    {trade.recommendedBuyAmount && <RiskStat label="BUY" value={`$${trade.recommendedBuyAmount}`} accent />}
+                    {trade.estimatedQuantity && <RiskStat label="QTY" value={trade.estimatedQuantity} />}
+                    {trade.plannedRewardAmount && <RiskStat label="REWARD" value={`$${trade.plannedRewardAmount}`} />}
+                    {trade.plannedRR && <RiskStat label="R:R" value={`1 : ${trade.plannedRR}`} />}
+                  </div>
+                </div>
+              </div>
+            )}
             {trade.lesson && (
               <div className="sm:col-span-2">
                 <Section label="LESSON" text={trade.lesson} highlight />
@@ -182,6 +204,21 @@ export default function TradeCard({ trade, onDelete }: Props) {
         </div>
       )}
     </article>
+  )
+}
+
+function RiskStat({ label, value, accent, loss }: {
+  label: string
+  value: string
+  accent?: boolean
+  loss?: boolean
+}) {
+  const color = loss ? 'var(--loss)' : accent ? 'var(--accent)' : 'var(--text)'
+  return (
+    <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border2)' }}>
+      <p className="mono mb-1" style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: 'var(--muted)' }}>{label}</p>
+      <p className="mono font-bold" style={{ fontSize: '0.78rem', color }}>{value}</p>
+    </div>
   )
 }
 
