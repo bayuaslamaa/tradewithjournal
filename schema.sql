@@ -15,6 +15,21 @@ create table if not exists public.trades (
   pair          text not null,                          -- e.g. BTC, ETH/USDT
   direction     text check (direction in ('LONG', 'SHORT')),
 
+  -- Price planning
+  entry_price_plan numeric(20, 8),
+  sl_plan          numeric(20, 8),
+  tp_plan          numeric(20, 8),
+  executed_price   numeric(20, 8),
+
+  -- Spot risk planning
+  portfolio_value        numeric(14, 2),
+  risk_percent           numeric(6, 3),
+  max_loss_amount        numeric(14, 2),
+  recommended_buy_amount numeric(14, 2),
+  estimated_quantity     numeric(20, 8),
+  planned_reward_amount  numeric(14, 2),
+  planned_rr             numeric(8, 2),
+
   -- Pre-trade journaling (fill BEFORE entering)
   reason        text,                                   -- Setup / why you're taking this trade
   emotion_before text,                                  -- How you feel before entry

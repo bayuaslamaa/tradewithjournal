@@ -28,6 +28,15 @@ export const trades = pgTable('trades', {
   tpPlan:         numeric('tp_plan',          { precision: 20, scale: 8 }),
   executedPrice:  numeric('executed_price',   { precision: 20, scale: 8 }),
 
+  // Spot risk planning
+  portfolioValue:       numeric('portfolio_value',        { precision: 14, scale: 2 }),
+  riskPercent:          numeric('risk_percent',           { precision: 6,  scale: 3 }),
+  maxLossAmount:        numeric('max_loss_amount',        { precision: 14, scale: 2 }),
+  recommendedBuyAmount: numeric('recommended_buy_amount', { precision: 14, scale: 2 }),
+  estimatedQuantity:    numeric('estimated_quantity',     { precision: 20, scale: 8 }),
+  plannedRewardAmount:  numeric('planned_reward_amount',  { precision: 14, scale: 2 }),
+  plannedRR:            numeric('planned_rr',             { precision: 8,  scale: 2 }),
+
   // Pre-trade journaling
   reason:        text('reason'),
   emotionBefore: text('emotion_before'),
