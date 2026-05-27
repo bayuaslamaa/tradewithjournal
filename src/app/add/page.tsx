@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { Direction, TradeResult } from '@/types/trade'
 import type { Trade } from '@/db/schema'
 import { calcPnl, calcPlannedRR, calcSpotRiskPlan } from '@/lib/risk'
+import { SuggestField } from '@/components/SuggestField'
 
 type FormData = Partial<Omit<Trade, 'id' | 'tradeNumber' | 'createdAt' | 'updatedAt'>>
 
@@ -11,6 +12,20 @@ const PAIRS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'AVAX', 'MATIC', 'OTHE
 const TAGS_PRESET = [
   'EMA', 'support', 'resistance', 'breakout', 'pullback',
   'pin bar', 'engulfing', 'FOMO', 'revenge', 'trend', 'scalp', 'swing',
+]
+
+const REASON_PRESETS = [
+  'EMA bounce', 'Support reclaim', 'Resistance break', 'Trend continuation',
+  'Pullback entry', 'Breakout retest', 'Pin bar reversal', 'Engulfing candle',
+  'Fibo retracement', 'Volume spike'
+]
+const EMOTION_BEFORE_PRESETS = [
+  'Calm & focused', 'FOMO creeping', 'Confident', 'Anxious',
+  'Revenge trade', 'Overconfident', 'Hesitant', 'Neutral'
+]
+const EMOTION_AFTER_PRESETS = [
+  'Satisfied', 'Frustrated', 'Relieved', 'Regretful',
+  'Proud of execution', 'Should have held', 'Cut too early', 'Followed plan'
 ]
 
 const empty: FormData = {
@@ -324,11 +339,14 @@ export default function AddTradePage() {
 
         {/* ── Section 3: Before trade ── */}
         <Section label="03 — BEFORE THE TRADE">
-          <Field label="REASON / SETUP" required>
-            <textarea rows={3} placeholder="Why are you taking this trade? Describe the setup, R:R, confluence…"
-              value={form.reason ?? ''} onChange={e => set('reason', e.target.value)}
-              className="glass-input form-input resize-none" />
-          </Field>
+          <SuggestField
+            label="REASON / SETUP"
+            required
+            placeholder="Why are you taking this trade? Describe the setup, R:R, confluence…"
+            value={form.reason ?? ''}
+            onChange={v => set('reason', v)}
+            suggestions={REASON_PRESETS}
+          />
 
           <Field label="AI OUTLOOK" accent>
             <div className="relative">
@@ -339,11 +357,14 @@ export default function AddTradePage() {
             </div>
           </Field>
 
-          <Field label="EMOTION BEFORE">
-            <textarea rows={2} placeholder="How are you feeling RIGHT NOW before entering?"
-              value={form.emotionBefore ?? ''} onChange={e => set('emotionBefore', e.target.value)}
-              className="glass-input form-input resize-none" />
-          </Field>
+          <SuggestField
+            label="EMOTION BEFORE"
+            placeholder="How are you feeling RIGHT NOW before entering?"
+            rows={2}
+            value={form.emotionBefore ?? ''}
+            onChange={v => set('emotionBefore', v)}
+            suggestions={EMOTION_BEFORE_PRESETS}
+          />
         </Section>
 
         {/* ── Section 4: After trade ── */}
@@ -370,11 +391,14 @@ export default function AddTradePage() {
             </Field>
           </div>
 
-          <Field label="EMOTION AFTER">
-            <textarea rows={2} placeholder="How did you feel after the trade closed?"
-              value={form.emotionAfter ?? ''} onChange={e => set('emotionAfter', e.target.value)}
-              className="glass-input form-input resize-none" />
-          </Field>
+          <SuggestField
+            label="EMOTION AFTER"
+            placeholder="How did you feel after the trade closed?"
+            rows={2}
+            value={form.emotionAfter ?? ''}
+            onChange={v => set('emotionAfter', v)}
+            suggestions={EMOTION_AFTER_PRESETS}
+          />
 
           {/* Grade */}
           <Field label="GRADE (1–5)">
