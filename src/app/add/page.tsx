@@ -99,6 +99,7 @@ export default function AddTradePage() {
         entryPrice: form.entryPricePlan,
         stopLoss: form.slPlan,
         takeProfit: form.tpPlan,
+        direction: form.direction,
       })
       if (form.portfolioValue) {
         window.localStorage.setItem('twx:lastPortfolioValue', String(form.portfolioValue))
@@ -129,7 +130,7 @@ export default function AddTradePage() {
     }
   }
 
-  const rr = calcPlannedRR(form.entryPricePlan, form.slPlan, form.tpPlan)
+  const rr = calcPlannedRR(form.entryPricePlan, form.slPlan, form.tpPlan, form.direction)
   const autoPnl = calcPnl(form.entryPricePlan, form.executedPrice, form.direction)
   const riskPlan = calcSpotRiskPlan({
     portfolioValue: form.portfolioValue,
@@ -137,6 +138,7 @@ export default function AddTradePage() {
     entryPrice: form.entryPricePlan,
     stopLoss: form.slPlan,
     takeProfit: form.tpPlan,
+    direction: form.direction,
   })
 
   return (
@@ -332,7 +334,9 @@ export default function AddTradePage() {
           )}
           {!riskPlan && form.portfolioValue && form.riskPercent && form.entryPricePlan && (
             <p className="mono text-[0.65rem] leading-relaxed" style={{ color: 'var(--muted)' }}>
-              Add a stop loss below entry to unlock the recommended spot position size.
+              {form.direction === 'SHORT'
+                ? 'Add a stop loss above entry to unlock the recommended spot position size.'
+                : 'Add a stop loss below entry to unlock the recommended spot position size.'}
             </p>
           )}
         </Section>
